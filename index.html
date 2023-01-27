@@ -30,6 +30,8 @@
 
     <script>
 
+
+
         class Point {
             constructor(_type, _values) {
                 this.type = _type;
@@ -76,6 +78,7 @@
         // var p2 = new Point("c", [0, 0, 0, 0, (120+2), (140+2)])
         // console.log(p2.toString())
 
+        const MINIMAL_MOVE = 5;
 
         var m_svgBox = document.getElementById("svg");
         var m_path = document.getElementById("path");
@@ -157,6 +160,9 @@
           var diffX = _x - prevPointPos.x;
           var diffY = _y - prevPointPos.y;
 
+          if(Math.abs(diffX) < MINIMAL_MOVE && Math.abs(diffY) < MINIMAL_MOVE )
+            return;
+
           lastPoint.setPos(diffX, diffY);
 
           var newPoint = lastPoint;
@@ -170,34 +176,24 @@
 
         }
 
-        // // Listen for mousemove event on canvas
-        // canvas.addEventListener("mousemove", movePoint);
+        // // Listen for mousemove event on svg
+        m_svgBox.addEventListener("mousemove", proceedDrawing);
 
-        // // Function to draw
-        // function movePoint(e) {
-        //   if (!isDrawing) return; // stop the function when they are not moused down
-        // //   ctx.bezierCurveTo(controlX1, controlY1, controlX2, controlY2, e.clientX, e.clientY);
-        //   startX = e.clientX;
-        //   startY = e.clientY;
-        //   ctx.lineTo(startX, startY);
-        //   ctx.stroke();
-        // }
+       
 
-        // // Listen for mouseup event on canvas
-        // document.body.addEventListener("keypress", stopDrawing);
+        // // Listen for drawing end
+        document.body.addEventListener("keypress", stopDrawing);
 
-        // // Function to stop drawing
-        // function stopDrawing(e) {
-        // //   isDrawing = false;
-        //     if (e.key === "Enter") {
-        //         // Cancel the default action, if needed
-        //         e.preventDefault();
-        //         isDrawing = false;
-        //         isFirstPoint = true;
-        //         console.log('Quit')
-
-        //     }
-        // }
+        // Function to stop drawing
+        function stopDrawing(e) {
+            if (e.key === "Enter") {
+                // Cancel the default action, if needed
+                e.preventDefault();
+                isDrawing = false;
+                isFirstPoint = true;
+                console.log('Quit')
+            }
+        }
 
         // Listen for mousemove event on canvas
         // canvas.addEventListener("mousemove", setControlPoints);

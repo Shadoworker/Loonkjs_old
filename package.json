@@ -1,0 +1,23 @@
+{
+  "name": "loonkjs",
+  "version": "1.0.0",
+  "description": "A svg based Pen Tool : juste like in Figma, Illustratror etc...",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shadoworker/Loonkjs.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Shadoworker/Loonkjs/issues"
+  },
+  "homepage": "https://github.com/Shadoworker/Loonkjs#readme",
+  "dependencies": {
+    "live-server": "^1.2.2"
+  }
+}
