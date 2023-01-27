@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoonkJS - PEN TOOL</title>
+</head>
+
+<body>
+
+    <style>
+        body {
+            margin: 0px;
+        }
+
+        svg#svg{
+            width: 800px; 
+            height: 600px; 
+            border:solid;
+        }
+    </style>
+
+
+    <svg id="svg">
+        <path id="path" d="M100,150 C100,150 100,150 102,152" fill="none" stroke-width="3" stroke="black" />
+    </svg>
+
+
+    <script>
+
+        class Point {
+            constructor(_type, _values) {
+                this.type = _type;
+                this.values = _values;
+            }
+
+
+            toString() // Return point equivalent in svg (M or c)
+            {
+                var _vals = "";
+                for (let i = 0; i < this.values.length; i+=2) 
+                {
+                    const p1 = this.values[i];
+                    const p2 = this.values[i+1];
+
+                    _vals += p1 + "," + p2 + " ";
+                }
+
+                return this.type+_vals;
+            }
+            getPos() // Getting the position of this point (x,y)
+            {
+                var _l = this.values.length;
+                var pos = {
+                    x : this.values[_l-2], 
+                    y: this.values[_l-1]
+                };
+
+                return pos; 
+            }
+            setPos(_diffX, _diffY)
+            {
+            //   for (let i = 0; i < (this.values.length/2); i++) 
+            //   {
+                // TODO : Check later for curve bezier values to update ...
+                var l = this.values.length;
+                this.values[l-2] = _diffX;
+                this.values[l-1] = _diffY;
+            //   }
+            }
+        }
+
+
+        // var p2 = new Point("c", [0, 0, 0, 0, (120+2), (140+2)])
+        // console.log(p2.toString())
+
+
+        var m_svgBox = document.getElementById("svg");
+        var m_path = document.getElementById("path");
+        var m_points = []; // Keep drawing points reference : for updates
+
+        var isDrawing = false , 
+            isFirstPoint = true;
+       
+        // // Listen for mousedown event on canvas
+        m_svgBox.addEventListener("mousedown", (e)=>{
+
+            isDrawing = true;
+
+            if(isFirstPoint)
+            {
+                startDrawing(e);
+                console.log("FIRST");
+                // Update path : Init
+                updatePath();
+            }
+            else
+            {
+                proceedDrawing(e);
+                console.log("NEXT");
+            }
+
+        });
+
+
+        function updatePath()
+        {
+            var data = "";
+
+            for (let i = 0; i < m_points.length; i++) {
+
+                const p = m_points[i];
+                var pToSvg = p.toString();
+
+                data += pToSvg;                
+            }
+
+            m_path.setAttribute("d", data);
+        }
+
+        // // Variables to track the state of the drawing
+        // var isDrawing = false;
+        // var startX, startY;
+        // var controlX1, controlY1, controlX2, controlY2;
+
+        // // Function to start drawing
+        function startDrawing(e) {
+         
+            isDrawing = true;
+
+            var _x = e.clientX;
+            var _y = e.clientY;
+            // Starting Point
+            var p1 = new Point("M", [_x, _y])
+            var dotMargin = 2;
+            var p2 = new Point("c", [0, 0, 0, 0, (dotMargin), (dotMargin)])
+            // console.log(p2)
+            // New points
+            m_points.push(p1,p2);
+            // startDrawing(e)
+            isFirstPoint = false;
+            console.log("FIRST");
+
+        }
+
+        function proceedDrawing(e) {
+          if (!isDrawing) return; // stop the function when drawmode left
+          var _x = e.clientX;
+          var _y = e.clientY;
+
+          // Update previous Point
+          var lastPoint = m_points[(m_points.length-1)];
+          var prevPoint = m_points[(m_points.length-2)];
+          var prevPointPos = prevPoint.getPos();
+          var diffX = _x - prevPointPos.x;
+          var diffY = _y - prevPointPos.y;
+
+          lastPoint.setPos(diffX, diffY);
+
+          var newPoint = lastPoint;
+          console.log("next")
+        
+          // Update points
+          m_points[(m_points.length-1)] = newPoint;
+
+          // Update path
+          updatePath();
+
+        }
+
+        // // Listen for mousemove event on canvas
+        // canvas.addEventListener("mousemove", movePoint);
+
+        // // Function to draw
+        // function movePoint(e) {
+        //   if (!isDrawing) return; // stop the function when they are not moused down
+        // //   ctx.bezierCurveTo(controlX1, controlY1, controlX2, controlY2, e.clientX, e.clientY);
+        //   startX = e.clientX;
+        //   startY = e.clientY;
+        //   ctx.lineTo(startX, startY);
+        //   ctx.stroke();
+        // }
+
+        // // Listen for mouseup event on canvas
+        // document.body.addEventListener("keypress", stopDrawing);
+
+        // // Function to stop drawing
+        // function stopDrawing(e) {
+        // //   isDrawing = false;
+        //     if (e.key === "Enter") {
+        //         // Cancel the default action, if needed
+        //         e.preventDefault();
+        //         isDrawing = false;
+        //         isFirstPoint = true;
+        //         console.log('Quit')
+
+        //     }
+        // }
+
+        // Listen for mousemove event on canvas
+        // canvas.addEventListener("mousemove", setControlPoints);
+
+        // // Function to set control points
+        // function setControlPoints(e) {
+        // //   if (!isDrawing) return;
+        //   controlX1 = startX + (e.clientX - startX) / 4;
+        //   controlY1 = startY;
+        //   controlX2 = startX + 3 * (e.clientX - startX) / 4;
+        //   controlY2 = e.clientY;
+        // }
+    </script>
+
+</body>
+
+</html>
