@@ -128,11 +128,6 @@
             }
         }
        
-        // Create a closer point to the current one in order to prepare the next one
-        function createStartingPoint(_lastPointX, _lastPointY)
-        {
-            return new Point("C", [_lastPointX, _lastPointY, _lastPointX, _lastPointY, (_lastPointX + DOT_MARGIN), (_lastPointY + DOT_MARGIN)])
-        }
         // // Function to start drawing
         function startDrawing(e) {
          
@@ -142,7 +137,8 @@
             var _y = e.clientY;
             // Starting Point
             var p1 = new Point("M", [_x, _y])
-            var p2 =createStartingPoint(_x, _y);
+            var dotMargin = 2;
+            var p2 = new Point("c", [0, 0, 0, 0, (DOT_MARGIN), (DOT_MARGIN)])
             // console.log(p2)
             // New points
             m_points.push(p1,p2);
@@ -157,14 +153,24 @@
           
             m_triggeredNewPoint = true;
 
-            // Create next point : Closer to the current one
-            var lastPoint = m_points[(m_points.length-1)];
-            var lpos = lastPoint.getPos();
-            var startingPoint = createStartingPoint(lpos.x, lpos.y);
-            m_points.push(startingPoint);
+            var p = new Point("c", [0, 0, 0, 0, (DOT_MARGIN), (DOT_MARGIN)])
+            m_points.push(p);
 
             var _x = e.clientX - SVG_MARGIN_X + DOT_MARGIN;
             var _y = e.clientY + DOT_MARGIN;
+
+            // var result = addNewPoint(_x, _y);
+            // var worthIt = result.worthIt;
+            // var newPoint = result.point;
+
+            // if(!worthIt) return;
+            
+            // console.log("NEXT")
+        
+            // Add the new point
+            // m_points.push(newPoint);
+            // m_points[(m_points.length-1)] = newPoint;
+
 
             // Update path
             updatePath();
@@ -202,8 +208,8 @@
             var lastPoint = m_points[(m_points.length-1)];
             var prevPoint = m_points[(m_points.length-2)];
             var prevPointPos = prevPoint.getPos();
-            var diffX = _x ;
-            var diffY = _y ;
+            var diffX = _x - prevPointPos.x;
+            var diffY = _y - prevPointPos.y;
 
             lastPoint.setPos(diffX, diffY);
 
@@ -222,11 +228,6 @@
                 e.preventDefault();
                 m_isDrawing = false;
                 m_isFirstPoint = true;
-
-                // Remove current startin point from points and update path ()
-                m_points.pop();
-                updatePath();
-                
                 console.log('Quit')
             }
         }
@@ -243,7 +244,7 @@
                 data += pToSvg;                
             }
 
-            m_path.setAttribute("d", data.trimEnd());
+            m_path.setAttribute("d", data);
         }
 
         // Listen for mousemove event on canvas
