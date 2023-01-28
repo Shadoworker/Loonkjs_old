@@ -40,6 +40,7 @@
 
 
 
+
         class Point {
             constructor(_type, _values) {
                 this.type = _type;
@@ -82,14 +83,7 @@
             }
         }
 
-
-        // var p2 = new Point("c", [0, 0, 0, 0, (120+2), (140+2)])
-        // console.log(p2.toString())
-
-        const MINIMAL_MOVE  = 5;
-        const DOT_MARGIN    = 2;
-        const DOUBLE_CLICK_DELAY = 250; //ms : 250 seem to be the smallest value between two taps
-
+        /* --------- STATES ------------ */
         const DRAWING_STATES = {
             NONE : 1,
             DRAWING : 2,
@@ -106,7 +100,16 @@
             NONE : 6
         }
 
+        /* ---------- STATES end --------- */
 
+
+
+        // var p2 = new Point("c", [0, 0, 0, 0, (120+2), (140+2)])
+        // console.log(p2.toString())
+
+        const MINIMAL_MOVE  = 5;
+        const DOT_MARGIN    = 2;
+        const DOUBLE_CLICK_DELAY = 250; //ms : 250 seem to be the smallest value between two taps
 
         var m_svgBox = document.getElementById("svg");
             m_path = document.getElementById("path"),
