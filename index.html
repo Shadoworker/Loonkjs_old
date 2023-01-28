@@ -31,7 +31,7 @@
 
     <div id="centering">
         <svg id="svg" >
-            <path id="path" d="M216,89 c0,0 0,0 87,111 c0,0 0,0 2,2" fill="none" stroke-width="3" stroke="black" />
+            <path id="path" d="" fill="none" stroke-width="3" stroke="black" />
         </svg>
     </div>
 
@@ -88,20 +88,43 @@
 
         const MINIMAL_MOVE  = 5;
         const DOT_MARGIN    = 2;
+        const DOUBLE_CLICK_DELAY = 250; //ms : 250 seem to be the smallest value between two taps
+
+        const DRAWING_STATES = {
+            NONE : 1,
+            DRAWING : 2,
+            UPDATING : 3,
+            CURVING : 4
+        }
+
+        const MOUSE_STATES = {
+            CLICKED : 1,
+            DOUBLECLICKED : 2,
+            DRAGING : 3,
+            MOVING : 4,
+            ENDED : 5,
+            NONE : 6
+        }
+
+
 
         var m_svgBox = document.getElementById("svg");
             m_path = document.getElementById("path"),
             m_points = [], // Keep drawing points reference : for updates
             m_isDrawing = false , 
             m_isFirstPoint = true,
-            m_triggeredNewPoint = false;
+            m_triggeredNewPoint = false,
+            m_startDrag = false,
+            m_isDraging = false,
+            m_clickProcessed = false,
+            m_mouseState = MOUSE_STATES.NONE,
+            m_drawingState = DRAWING_STATES.NONE;
        
         var SVG_MARGIN_X = m_svgBox.getBoundingClientRect().left;
 
-        console.log(SVG_MARGIN_X)
-        
+
         // // Listen for mousedown event on svg
-        m_svgBox.addEventListener("mousedown", draw);
+        m_svgBox.addEventListener("click", draw);
 
         // // Listen for mousemove event on svg
         m_svgBox.addEventListener("mousemove", updateDrawing);
@@ -110,23 +133,69 @@
         document.body.addEventListener("keypress", stopDrawing);
 
 
-        // Trigger Draw on Canvas
+        // Trigger Draw on SVG
+        var timer;
+        var tapCount = 0;
         function draw(e)
         {
-            m_isDrawing = true;
+            m_mouseState = MOUSE_STATES.NONE;
 
-            if(m_isFirstPoint)
+            var tapCount = e.detail;
+
+            // console.log(e.detail)
+            if(tapCount == 1)
+                timer = setTimeout(()=>{
+                    tapCount = 0;
+                    
+                    if(m_mouseState != MOUSE_STATES.DOUBLECLICKED || m_mouseState != MOUSE_STATES.DRAGING)
+                    {    
+                        m_mouseState = MOUSE_STATES.CLICKED;
+                        // console.log("CLICK")
+                        m_clickProcessed = true;
+
+                        if(m_isFirstPoint)
+                        {
+                            startDrawing(e);
+                            // Update path : Init
+                            updatePath();
+                        }
+                        else
+                        {
+                            proceedDrawing(e);
+                        }
+
+                    }
+
+                },DOUBLE_CLICK_DELAY)
+            if(tapCount >= 2)
             {
-                startDrawing(e);
-                // Update path : Init
-                updatePath();
+                if(timer)
+                    clearTimeout(timer);
+                tapCount = 0;
+                
+                m_mouseState = MOUSE_STATES.DOUBLECLICKED;
+                m_drawingState = DRAWING_STATES.CURVING;
+
+                console.log("CLICKx2")
             }
-            else
-            {
-                proceedDrawing(e);
-                console.log("NEXT");
-            }
+
+            // if(m_startDrag) return;
+
+
+            // if(m_isFirstPoint)
+            // {
+            //     startDrawing(e);
+            //     // Update path : Init
+            //     updatePath();
+            // }
+            // else
+            // {
+            //     proceedDrawing(e);
+            //     console.log("NEXT");
+            // }
         }
+
+       
        
         // Create a closer point to the current one in order to prepare the next one
         function createStartingPoint(_lastPointX, _lastPointY)
@@ -136,13 +205,13 @@
         // // Function to start drawing
         function startDrawing(e) {
          
-            m_isDrawing = true;
+            m_drawingState = DRAWING_STATES.DRAWING;
 
             var _x = e.clientX - SVG_MARGIN_X;
             var _y = e.clientY;
             // Starting Point
             var p1 = new Point("M", [_x, _y])
-            var p2 =createStartingPoint(_x, _y);
+            var p2 = createStartingPoint(_x, _y);
             // console.log(p2)
             // New points
             m_points.push(p1,p2);
@@ -153,18 +222,27 @@
         }
 
         function proceedDrawing(e) {
-          if (!m_isDrawing) return; // stop the function when drawmode left
+
+          if (m_drawingState != DRAWING_STATES.DRAWING) return; // stop the function when drawmode left
           
+            console.log("NEXT");
+
             m_triggeredNewPoint = true;
 
             // Create next point : Closer to the current one
             var lastPoint = m_points[(m_points.length-1)];
             var lpos = lastPoint.getPos();
             var startingPoint = createStartingPoint(lpos.x, lpos.y);
-            m_points.push(startingPoint);
 
             var _x = e.clientX - SVG_MARGIN_X + DOT_MARGIN;
             var _y = e.clientY + DOT_MARGIN;
+            
+            var diffX = _x - lpos.x ;
+            var diffY = _y - lpos.y;
+            var worthIt = (Math.abs(diffX) > MINIMAL_MOVE || Math.abs(diffY) > MINIMAL_MOVE );
+            
+           
+            m_points.push(startingPoint);
 
             // Update path
             updatePath();
@@ -175,39 +253,73 @@
 
         function updateDrawing(e)
         {
-            if(!m_isDrawing || m_triggeredNewPoint) return;
+            // if(m_isDraging)
+            // {
+            //     console.log("DRAGING POINT")
 
-            var _x = e.clientX - SVG_MARGIN_X;
-            var _y = e.clientY;
+            //     return;
+            // }
 
-            var result = addNewPoint(_x, _y);
-            var worthIt = result.worthIt;
-            var newPoint = result.point;
+            if(m_drawingState != DRAWING_STATES.DRAWING || m_triggeredNewPoint) return;
 
-            if(!worthIt) return;
             
-            console.log("UPDATING")
-        
-            // Update points
-            m_points[(m_points.length-1)] = newPoint;
+            if(m_mouseState == MOUSE_STATES.CLICKED)
+            {
+                var _x = e.clientX - SVG_MARGIN_X;
+                var _y = e.clientY;
+                
+                var result = addNewPoint(_x, _y);
+                var worthIt = result.worthIt;
+                var newPoint = result.point;
 
-            // Update path
-            updatePath();
+                if(!worthIt) return;
+                
+                console.log("UPDATING")
+            
+                // Update points
+                m_points[(m_points.length-1)] = newPoint;
+
+                // Update path
+                updatePath();
+
+            }
+
+           
 
         }
 
-        function addNewPoint(_x, _y)
+
+        function dragingPoint(e)
+        {
+            clearTimeout(timer)
+            console.log('dblclick')
+            // if(m_startDrag)
+            // {
+            //     console.log("DRAG STARTED")
+            //     m_isDraging = true;
+            // }
+          
+
+        }
+
+        function addNewPoint(_x, _y, _isUpdating = false)
         { 
-            // Update previous Point
+            
             var lastPoint = m_points[(m_points.length-1)];
             var prevPoint = m_points[(m_points.length-2)];
             var prevPointPos = prevPoint.getPos();
-            var diffX = _x ;
-            var diffY = _y ;
+            var x = prevPointPos.x;
+            var y = prevPointPos.y;
 
-            lastPoint.setPos(diffX, diffY);
+            if(!_isUpdating)
+            {   
+                x = _x ;
+                y = _y ;
+            }
 
-            var worthIt = (Math.abs(diffX) > MINIMAL_MOVE || Math.abs(diffY) > MINIMAL_MOVE );
+            lastPoint.setPos(x, y);
+
+            var worthIt = (Math.abs(x) > MINIMAL_MOVE || Math.abs(y) > MINIMAL_MOVE );
 
             var result = {worthIt : worthIt, point : lastPoint};
 
@@ -226,7 +338,7 @@
                 // Remove current startin point from points and update path ()
                 m_points.pop();
                 updatePath();
-                
+
                 console.log('Quit')
             }
         }
