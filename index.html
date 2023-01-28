@@ -41,6 +41,8 @@
 
 
 
+        /* -------- POINT CLASS ------- */
+
         class Point {
             constructor(_type, _values) {
                 this.type = _type;
@@ -83,6 +85,8 @@
             }
         }
 
+        /* ------ POINT CLASS end ------ */
+
         /* --------- STATES ------------ */
         const DRAWING_STATES = {
             NONE : 1,
@@ -102,14 +106,10 @@
 
         /* ---------- STATES end --------- */
 
-
-
-        // var p2 = new Point("c", [0, 0, 0, 0, (120+2), (140+2)])
-        // console.log(p2.toString())
-
+ 
         const MINIMAL_MOVE  = 5;
         const DOT_MARGIN    = 2;
-        const DOUBLE_CLICK_DELAY = 250; //ms : 250 seem to be the smallest value between two taps
+        const DOUBLE_CLICK_DELAY = 300; //ms : 250 seem to be the smallest value between two taps
 
         var m_svgBox = document.getElementById("svg");
             m_path = document.getElementById("path"),
@@ -127,75 +127,47 @@
 
 
         // // Listen for mousedown event on svg
-        m_svgBox.addEventListener("click", draw);
+        m_svgBox.addEventListener("mousedown", draw);
 
-        // // Listen for mousemove event on svg
-        m_svgBox.addEventListener("mousemove", updateDrawing);
-
+        // // Listen for mousemove event and drag on svg
+        m_svgBox.addEventListener('mousemove', (e) => {
+            if(e.buttons == 1) 
+            {
+                e.preventDefault();
+                // console.log("DRAGING...")
+                m_mouseState = MOUSE_STATES.DRAGING;
+            }
+            else
+            {
+                updateDrawing(e);
+            }
+        });
         // // Listen for drawing end
         document.body.addEventListener("keypress", stopDrawing);
 
 
         // Trigger Draw on SVG
-        var timer;
-        var tapCount = 0;
         function draw(e)
         {
             m_mouseState = MOUSE_STATES.NONE;
-
-            var tapCount = e.detail;
-
-            // console.log(e.detail)
-            if(tapCount == 1)
-                timer = setTimeout(()=>{
-                    tapCount = 0;
                     
-                    if(m_mouseState != MOUSE_STATES.DOUBLECLICKED || m_mouseState != MOUSE_STATES.DRAGING)
-                    {    
-                        m_mouseState = MOUSE_STATES.CLICKED;
-                        // console.log("CLICK")
-                        m_clickProcessed = true;
+            if(m_mouseState != MOUSE_STATES.DOUBLECLICKED || m_mouseState != MOUSE_STATES.DRAGING)
+            {    
+                m_mouseState = MOUSE_STATES.CLICKED;
 
-                        if(m_isFirstPoint)
-                        {
-                            startDrawing(e);
-                            // Update path : Init
-                            updatePath();
-                        }
-                        else
-                        {
-                            proceedDrawing(e);
-                        }
+                m_clickProcessed = true;
 
-                    }
+                if(m_isFirstPoint)
+                {
+                    startDrawing(e);
+                }
+                else
+                {
+                    proceedDrawing(e);
+                }
 
-                },DOUBLE_CLICK_DELAY)
-            if(tapCount >= 2)
-            {
-                if(timer)
-                    clearTimeout(timer);
-                tapCount = 0;
-                
-                m_mouseState = MOUSE_STATES.DOUBLECLICKED;
-                m_drawingState = DRAWING_STATES.CURVING;
-
-                console.log("CLICKx2")
             }
 
-            // if(m_startDrag) return;
-
-
-            // if(m_isFirstPoint)
-            // {
-            //     startDrawing(e);
-            //     // Update path : Init
-            //     updatePath();
-            // }
-            // else
-            // {
-            //     proceedDrawing(e);
-            //     console.log("NEXT");
-            // }
         }
 
        
@@ -218,7 +190,10 @@
             // console.log(p2)
             // New points
             m_points.push(p1,p2);
-            // startDrawing(e)
+            
+            // Update path : Init
+            updatePath();
+
             m_isFirstPoint = false;
             console.log("FIRST");
 
@@ -237,6 +212,8 @@
             var lpos = lastPoint.getPos();
             var startingPoint = createStartingPoint(lpos.x, lpos.y);
 
+            console.log(m_points.length);
+
             var _x = e.clientX - SVG_MARGIN_X + DOT_MARGIN;
             var _y = e.clientY + DOT_MARGIN;
             
@@ -244,13 +221,21 @@
             var diffY = _y - lpos.y;
             var worthIt = (Math.abs(diffX) > MINIMAL_MOVE || Math.abs(diffY) > MINIMAL_MOVE );
             
+            // if(worthIt)
+            // {
+                m_points.push(startingPoint);
+
+                // Update path
+                updatePath();
+
+                m_triggeredNewPoint = false;
+            // }
+            // else
+            // {
+            //     console.log("DOUBLE");
+            // }
            
-            m_points.push(startingPoint);
-
-            // Update path
-            updatePath();
-
-            m_triggeredNewPoint = false;
+          
 
         }
 
@@ -334,8 +319,8 @@
         function stopDrawing(e) {
             if (e.key === "Enter") {
                 // Cancel the default action, if needed
-                e.preventDefault();
-                m_isDrawing = false;
+                // e.preventDefault();
+                m_mouseState = MOUSE_STATES.NONE;
                 m_isFirstPoint = true;
 
                 // Remove current startin point from points and update path ()
