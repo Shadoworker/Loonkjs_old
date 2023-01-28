@@ -121,7 +121,11 @@
             m_isDraging = false,
             m_clickProcessed = false,
             m_mouseState = MOUSE_STATES.NONE,
-            m_drawingState = DRAWING_STATES.NONE;
+            m_drawingState = DRAWING_STATES.NONE,
+            m_addedCurvePointStarter = false // Ctrl for curve creation onDrag
+
+            ;
+
        
         var SVG_MARGIN_X = m_svgBox.getBoundingClientRect().left;
 
@@ -243,6 +247,12 @@
 
         function proceedCurve(e) {
 
+            /*LOGIC :
+                - Add a new starting point (TO BE MOVED WHILE DRAGING - ref : mouseMove)
+                - Modify prev point's curve
+                - Modify last point's curve
+            */
+            
             if (m_drawingState != DRAWING_STATES.DRAWING && m_mouseState != MOUSE_STATES.DRAGING) return; // stop the function when drawmode left
 
             var _x = e.clientX - SVG_MARGIN_X;
@@ -252,12 +262,18 @@
             var worthIt = result.worthIt;
             var newPoint = result.point;
 
-            if(!worthIt) return;
+            if(!m_addedCurvePointStarter) // In order to add only a single one point
+            {       
+                // Add new point
+                m_points.push(newPoint);
+                m_addedCurvePointStarter = true;
+            }
+            
             
             console.log("DRAGING")
         
-            // Update points
-            m_points[(m_points.length-1)] = newPoint;
+            // // Update points
+            // m_points[(m_points.length-1)] = newPoint;
 
             // Update path
             updatePath();
@@ -292,9 +308,7 @@
                 updatePath();
 
             }
-
-           
-
+ 
         }
 
         // Left click or draging state
@@ -302,25 +316,16 @@
         {
 
             if(m_mouseState == MOUSE_STATES.DRAGING)
+            {
+                // reset mouse state
                 m_mouseState = MOUSE_STATES.NONE;
+                // Reset curve starter
+                m_addedCurvePointStarter = false;
+            }
             
 
-
         }
 
-
-        function dragingPoint(e)
-        {
-            clearTimeout(timer)
-            console.log('dblclick')
-            // if(m_startDrag)
-            // {
-            //     console.log("DRAG STARTED")
-            //     m_isDraging = true;
-            // }
-          
-
-        }
 
         function addNewPoint(_x, _y, _isUpdating = false)
         { 
@@ -352,11 +357,16 @@
             if (e.key === "Enter") {
                 // Cancel the default action, if needed
                 // e.preventDefault();
+
+                if(m_mouseState != MOUSE_STATES.DRAGING) // Remove last point only when not in Draging
+                {
+                    // Remove current startin point from points and update path ()
+                    m_points.pop();
+                }
+
                 m_mouseState = MOUSE_STATES.NONE;
                 m_isFirstPoint = true;
 
-                // Remove current startin point from points and update path ()
-                m_points.pop();
                 updatePath();
 
                 console.log('Quit')
