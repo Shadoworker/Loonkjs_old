@@ -35,6 +35,11 @@
         </svg>
     </div>
 
+    <!-- 
+        M 0.5 1 C 4 60 16 175 45 175 
+
+        M 0.5 1 C -4 60 -29 175 45 175 
+    -->
 
     <script>
 
@@ -47,8 +52,12 @@
             constructor(_type, _values) {
                 this.type = _type;
                 this.values = _values;
-            }
 
+                // Used for keeping curving point fixed
+                this._initX = null;
+                this._initY = null;
+
+            }
 
             toString() // Return point equivalent in svg (M or c)
             {
@@ -75,14 +84,74 @@
             }
             setPos(_diffX, _diffY)
             {
-            //   for (let i = 0; i < (this.values.length/2); i++) 
-            //   {
-                // TODO : Check later for curve bezier values to update ...
                 var l = this.values.length;
                 this.values[l-2] = _diffX;
                 this.values[l-1] = _diffY;
-            //   }
             }
+
+            saveInitialPos()
+            {
+                var initialPos = this.getPos();
+                this._initX = initialPos.x;
+                this._initY = initialPos.y;
+            }
+
+            getPrevPointPos()
+            {
+                return m_points[m_points.indexOf(this) - 1].getPos();
+            }
+
+            getCP1Coords()
+            {
+                var a = m_points[m_points.indexOf(this) - 1].getPos();
+                var b = this.getPos();
+                // calc line's midpoint
+                var midX=a.x+(b.x-a.x)*0.3;
+                var midY=a.y+(b.y-a.y)*0.3;
+
+                return {x : midX,  y : midY};
+            }
+
+            setCP1Coords(_coords)
+            {
+                var cp1x = 0, cp1y = 1;
+                
+                this.values[cp1x] = _coords.x;
+                this.values[cp1y] = _coords.y;
+            }
+
+            setCP2Coords(_coords)
+            {
+                var cp2x = 2, cp2y = 3;
+                
+                this.values[cp2x] = _coords.x;
+                this.values[cp2y] = _coords.y;
+            }
+
+            setCurve(_dragX, _dragY)
+            {
+               /* X X   X X  0 0 : control points*/ 
+                var cp1x = 0, cp1y = 1, 
+                    cp2x = 2, cp2y = 3,
+                    posx = 4, posy = 5;
+ 
+                var l = this.values.length;
+
+                this.values[cp1x] = (this._initX - _dragX);
+                this.values[cp1y] = (this._initY - _dragY * 0.3);
+
+                this.values[cp2x] = (this._initX - _dragX);
+                this.values[cp2y] = (this._initY + _dragY * 0.3);
+
+                // Reset pos to initial one
+                this.values[posx] = this._initX;
+                this.values[posy] = this._initY;
+
+            }
+
+
+
+
         }
 
         /* ------ POINT CLASS end ------ */
@@ -122,8 +191,8 @@
             m_clickProcessed = false,
             m_mouseState = MOUSE_STATES.NONE,
             m_drawingState = DRAWING_STATES.NONE,
-            m_addedCurvePointStarter = false // Ctrl for curve creation onDrag
-
+            m_addedCurvePointStarter = false, // Ctrl for curve creation onDrag
+            m_dragStartPos = {x : null, y : null};
             ;
 
        
@@ -217,7 +286,7 @@
 
         function proceedLine(e) {
 
-          if (m_drawingState != DRAWING_STATES.DRAWING) return; // stop the function when drawmode left
+          if (m_drawingState != DRAWING_STATES.DRAWING || m_mouseState == MOUSE_STATES.DRAGING) return; // stop the function when drawmode left
           
             console.log("LINE");
 
@@ -234,7 +303,7 @@
             var diffY = _y - lastPointPos.y;
             var worthIt = (Math.abs(diffX) > MINIMAL_MOVE || Math.abs(diffY) > MINIMAL_MOVE );
             
-            m_points.push(startingPoint);
+            // m_points.push(startingPoint);
 
             // Update path
             updatePath();
@@ -248,9 +317,10 @@
         function proceedCurve(e) {
 
             /*LOGIC :
-                - Add a new starting point (TO BE MOVED WHILE DRAGING - ref : mouseMove)
-                - Modify prev point's curve
-                - Modify last point's curve
+                - Add a new starting point (TO BE MOVED WHILE DRAGING - ref : mouseMove) ✓
+                - Set control point 1               ✓
+                - Set control point 2               ✓
+                - Prevent point pos from moving     ✓
             */
             
             if (m_drawingState != DRAWING_STATES.DRAWING && m_mouseState != MOUSE_STATES.DRAGING) return; // stop the function when drawmode left
@@ -262,15 +332,50 @@
             var worthIt = result.worthIt;
             var newPoint = result.point;
 
+            // Get concerned Points
+            // var curvingPoint = m_points[m_points.length - 2];
+            var activePoint = m_points[m_points.length - 1];
+
             if(!m_addedCurvePointStarter) // In order to add only a single one point
             {       
                 // Add new point
-                m_points.push(newPoint);
-                m_addedCurvePointStarter = true;
+                // m_points.push(newPoint);
+                // Set DragStatPos : Once --------
+                m_dragStartPos.x = _x;
+                m_dragStartPos.y = _y;
+                //-------------------------
+
+                //Save active point initial pos
+                activePoint.saveInitialPos();
+
+                //Set first control point : To reset later if straight line
+                var initialCP1Pos = activePoint.getCP1Coords();
+                activePoint.setCP1Coords(initialCP1Pos);
+                // Set second control point ....
+                var initialCP2Pos = activePoint.getPos();
+                activePoint.setCP2Coords(initialCP2Pos);
+
+                m_addedCurvePointStarter = true; // Leave this loop
             }
+
+          
+            // Get Draging distance ---------------
+            var lineDist = getDistance(activePoint.getPrevPointPos().x, activePoint.getPrevPointPos().y, m_dragStartPos.x, m_dragStartPos.y);
+            var dist = getDistance(_x, _y, m_dragStartPos.x, m_dragStartPos.y);
             
+            console.log([lineDist , dist]);
+
+            var _dragX = _x - m_dragStartPos.x;
+            var _dragY = _y - m_dragStartPos.y;
+            // console.log([_dragX, _dragY])
+            // _dragX =  _dragX/Math.abs(_dragX) || 1; // To avoid NAN
+            // _dragY =  _dragY/Math.abs(_dragY) || 1; // To avoid NAN
+            //--------------------------------------
+            // Update Points values to create a curve
+            activePoint.setCurve(_dragX, _dragY);  // right
+
             
-            console.log("DRAGING")
+            // console.log("DRAGING")
         
             // // Update points
             // m_points[(m_points.length-1)] = newPoint;
@@ -285,7 +390,8 @@
         function updateDrawing(e)
         {
 
-            if(m_drawingState != DRAWING_STATES.DRAWING || m_mouseState == MOUSE_STATES.DRAGING || m_triggeredNewPoint) return;
+            if(m_drawingState != DRAWING_STATES.DRAWING || m_triggeredNewPoint) return;
+            if(m_mouseState == MOUSE_STATES.DRAGING) return;
 
             
             if(m_mouseState == MOUSE_STATES.CLICKED)
@@ -369,7 +475,7 @@
 
                 updatePath();
 
-                console.log('Quit')
+                console.log('QUIT')
             }
         }
 
@@ -388,6 +494,13 @@
             m_path.setAttribute("d", data.trimEnd());
         }
 
+        function getDistance(xA, yA, xB, yB) { 
+            
+            var xDiff = xA - xB; 
+            var yDiff = yA - yB;
+
+            return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
+        }
         // Listen for mousemove event on canvas
         // canvas.addEventListener("mousemove", setControlPoints);
 
