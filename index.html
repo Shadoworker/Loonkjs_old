@@ -138,10 +138,10 @@
                 var l = this.values.length;
 
                 this.values[cp1x] = (this._initX - _dragX);
-                this.values[cp1y] = (this._initY - _dragY * 0.3);
+                this.values[cp1y] = (this._initY - (_dragY * 1));
 
                 this.values[cp2x] = (this._initX - _dragX);
-                this.values[cp2y] = (this._initY + _dragY * 0.3);
+                this.values[cp2y] = (this._initY - (_dragY * 1));
 
                 // Reset pos to initial one
                 this.values[posx] = this._initX;
@@ -357,7 +357,6 @@
 
                 m_addedCurvePointStarter = true; // Leave this loop
             }
-
           
             // Get Draging distance ---------------
             var lineDist = getDistance(activePoint.getPrevPointPos().x, activePoint.getPrevPointPos().y, m_dragStartPos.x, m_dragStartPos.y);
