@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CANVAS RULERS - GUIDES</title>
+</head>
+
+<body>
+
+  <style>
+    canvas {
+      border: solid 1px gray;
+      cursor: crosshair;
+    }
+  </style>
+
+  <canvas id="canvas" width="800" height="600"></canvas>
+
+  <script>
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+
+    // var rulerWidth = canvas.width;
+    // var rulerHeight = canvas.height;
+    // var rulerUnit = 10;
+    // var rulerLength = rulerWidth;
+    // var startX = 0;
+    // var endX = 0;
+
+    // canvas.addEventListener("mousedown", function (e) {
+    //   startX = e.clientX - canvas.offsetLeft;
+    // });
+
+    // canvas.addEventListener("mouseup", function (e) {
+    //   endX = e.clientX - canvas.offsetLeft;
+    //   drawRuler(startX, endX);
+    // });
+
+    // function drawRuler(startX, endX) {
+    //   ctx.clearRect(0, 0, rulerWidth, rulerHeight);
+    //   ctx.beginPath();
+    //   ctx.rect(0, 0, rulerWidth, rulerHeight);
+    //   ctx.fillStyle = "white";
+    //   ctx.fill();
+
+    //   for (var i = startX; i <= endX; i += rulerUnit) {
+    //     ctx.beginPath();
+    //     ctx.moveTo(i, rulerHeight - 5);
+    //     ctx.lineTo(i, rulerHeight);
+    //     ctx.stroke();
+
+    //     if (i % 50 == 0) {
+    //       ctx.fillText(i, i, rulerHeight - 10);
+    //     }
+    //   }
+    // }
+
+    
+// var guideWidth = canvas.width;
+// var guideHeight = canvas.height;
+// var guides = [];
+// var dragging = false;
+
+// canvas.addEventListener("mousedown", function (e) {
+//   var x = e.clientX - canvas.offsetLeft;
+//   var y = e.clientY - canvas.offsetTop;
+//   var guide = checkForHit(x, y);
+
+//   if (guide) {
+//     dragging = guide;
+//   } else {
+//     guides.push({x: x, y: y});
+//     drawGuides();
+//   }
+// });
+
+// canvas.addEventListener("mousemove", function (e) {
+//   if (dragging) {
+//     var x = e.clientX - canvas.offsetLeft;
+//     var y = e.clientY - canvas.offsetTop;
+
+//     dragging.x = x;
+//     dragging.y = y;
+//     drawGuides();
+//   }
+// });
+
+// canvas.addEventListener("mouseup", function (e) {
+//   dragging = false;
+// });
+
+// function checkForHit(x, y) {
+//   for (var i = 0; i < guides.length; i++) {
+//     var guide = guides[i];
+//     var dx = x - guide.x;
+//     var dy = y - guide.y;
+//     var distance = Math.sqrt(dx * dx + dy * dy);
+
+//     if (distance < 5) {
+//       return guide;
+//     }
+//   }
+//   return false;
+// }
+
+// function drawGuides() {
+//   ctx.clearRect(0, 0, guideWidth, guideHeight);
+//   ctx.beginPath();
+
+//   for (var i = 0; i < guides.length; i++) {
+//     var guide = guides[i];
+//     ctx.moveTo(0, guide.y);
+//     ctx.lineTo(guideWidth, guide.y);
+//     ctx.moveTo(guide.x, 0);
+//     ctx.lineTo(guide.x, guideHeight);
+//   }
+
+//   ctx.strokeStyle = "grey";
+//   ctx.stroke();
+// }
+
+var guideWidth = canvas.width;
+var guideHeight = canvas.height;
+var objects = [];
+var guides = [];
+var selectedObj = null;
+var offsetX = 0;
+var offsetY = 0;
+
+// Example objects
+objects.push({x: 100, y: 100, width: 50, height: 50});
+objects.push({x: 300, y: 200, width: 75, height: 75});
+
+// Example guides
+guides.push({x: 0, y: guideHeight / 2, type: "horizontal"});
+guides.push({x: guideWidth / 2, y: 0, type: "vertical"});
+
+canvas.addEventListener("mousedown", handleMouseDown);
+canvas.addEventListener("mouseup", handleMouseUp);
+canvas.addEventListener("mousemove", handleMouseMove);
+
+drawGuides();
+
+function handleMouseDown(e) {
+  var mouseX = e.clientX - canvas.offsetLeft;
+  var mouseY = e.clientY - canvas.offsetTop;
+
+  for (var i = 0; i < objects.length; i++) {
+    var obj = objects[i];
+
+    if (mouseX >= obj.x && mouseX <= obj.x + obj.width && mouseY >= obj.y && mouseY <= obj.y + obj.height) {
+      selectedObj = obj;
+      offsetX = mouseX - obj.x;
+      offsetY = mouseY - obj.y;
+      break;
+    }
+  }
+}
+
+function handleMouseUp(e) {
+  selectedObj = null;
+}
+
+function handleMouseMove(e) {
+  var mouseX = e.clientX - canvas.offsetLeft;
+  var mouseY = e.clientY - canvas.offsetTop;
+
+  if (selectedObj) {
+    selectedObj.x = mouseX - offsetX;
+    selectedObj.y = mouseY - offsetY;
+
+    for (var i = 0; i < guides.length; i++) {
+      var guide = guides[i];
+      var guideX = guide.x;
+      var guideY = guide.y;
+
+      if (guide.type === "horizontal") {
+        if (Math.abs(selectedObj.y - guideY) < 5) {
+          selectedObj.y = guideY;
+          displayGuideValue(guideX, guideY, "horizontal");
+        }
+      } else if (guide.type === "vertical") {
+        if (Math.abs(selectedObj.x - guideX) < 5) {
+          selectedObj.x = guideX;
+          displayGuideValue(guideX, guideY, "vertical");
+        }
+      }
+    }
+  }
+
+  drawGuides();
+}
+
+
+function displayGuideValue(guideX, guideY, type) {
+  ctx.font = "12px Arial";
+  ctx.fillStyle = "grey";
+
+  if (type === "horizontal") {
+    ctx.fillText(guideY, guideX + 10, guideY - 10);
+  } else if (type === "vertical") {
+    ctx.fillText(guideX, guideX + 10, guideY - 10);
+  }
+}
+
+
+function drawGuides() {
+  ctx.clearRect(0, 0, guideWidth, guideHeight);
+
+  for (var i = 0; i < objects.length; i++) {
+    var obj = objects[i];
+    ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+  }
+
+  for (var i = 0; i < guides.length; i++) {
+    var guide = guides[i];
+    ctx.beginPath();
+
+    if (guide.type === "horizontal") {
+      ctx.moveTo(0, guide.y);
+      ctx.lineTo(guideWidth, guide.y);
+    } else if (guide.type === "vertical") {
+      ctx.moveTo(guide.x, 0);
+      ctx.lineTo(guide.x, guideHeight);
+    }
+
+    ctx.strokeStyle = "grey";
+    ctx.stroke();
+  }
+}
+
+  </script>
+
+</body>
+
+</html>
