@@ -57,6 +57,9 @@
                 this._initX = null;
                 this._initY = null;
 
+                this._initC1X = null;
+                this._initC1Y = null;
+
             }
 
             toString() // Return point equivalent in svg (M or c)
@@ -106,10 +109,13 @@
                 var a = m_points[m_points.indexOf(this) - 1].getPos();
                 var b = this.getPos();
                 // calc line's midpoint
-                var midX=a.x+(b.x-a.x)*0.3;
-                var midY=a.y+(b.y-a.y)*0.3;
+                var thirdX=a.x+(b.x-a.x)*0.3;
+                var thirdY=a.y+(b.y-a.y)*0.3;
 
-                return {x : midX,  y : midY};
+                this._initC1X = thirdX;
+                this._initC1Y = thirdY;
+
+                return {x : thirdX,  y : thirdY};
             }
 
             setCP1Coords(_coords)
@@ -128,24 +134,44 @@
                 this.values[cp2y] = _coords.y;
             }
 
-            setCurve(_dragX, _dragY)
+            setCurve(_x, _y)
             {
                /* X X   X X  0 0 : control points*/ 
+
                 var cp1x = 0, cp1y = 1, 
                     cp2x = 2, cp2y = 3,
                     posx = 4, posy = 5;
  
                 var l = this.values.length;
 
-                this.values[cp1x] = (this._initX - _dragX);
-                this.values[cp1y] = (this._initY - (_dragY * 1));
-
-                this.values[cp2x] = (this._initX - _dragX);
-                this.values[cp2y] = (this._initY - (_dragY * 1));
-
+                
                 // Reset pos to initial one
+             
+                // console.log(thirdDist)
+                
+                // _dragX += (lineDist/2)
+                // _dragY += (lineDist/2)
+                var BASE_MULTIPLIER = Math.PI;
+
+                var startX = m_points[0].getPos().x;
+                var startY = m_points[0].getPos().y;
+
+                var xDiff = this._initX - startX;
+
+
+                this.values[cp1x] = startX //- (_x - startX) / Math.PI;
+                this.values[cp1y] = startY //+ (_y - startY) / Math.PI;
+
+                this.values[cp2x] = startX - (_x - startX) + (xDiff * 2)/* / BASE_MULTIPLIER * 1.5 */;
+                this.values[cp2y] = startY + (_y - startY) / BASE_MULTIPLIER * 3;
+
                 this.values[posx] = this._initX;
                 this.values[posy] = this._initY;
+ 
+                // control1X = startX + (event.clientX - startX) / 3;
+                // control1Y = startY + (event.clientY - startY) / 3;
+                // control2X = startX + (event.clientX - startX) / 3 * 2;
+                // control2Y = startY + (event.clientY - startY) / 3 * 2;
 
             }
 
@@ -198,7 +224,7 @@
        
         var SVG_MARGIN_X = m_svgBox.getBoundingClientRect().left;
 
-
+        console.log(SVG_MARGIN_X)
         // // Listen for mousedown event on svg
         m_svgBox.addEventListener("mousedown", draw);
 
@@ -359,19 +385,24 @@
             }
           
             // Get Draging distance ---------------
-            var lineDist = getDistance(activePoint.getPrevPointPos().x, activePoint.getPrevPointPos().y, m_dragStartPos.x, m_dragStartPos.y);
-            var dist = getDistance(_x, _y, m_dragStartPos.x, m_dragStartPos.y);
-            
-            console.log([lineDist , dist]);
+            // var lineDist = getDistance(activePoint.getPrevPointPos().x, activePoint.getPrevPointPos().y, m_dragStartPos.x, m_dragStartPos.y);
+            // var dist = getDistance(_x, _y, m_dragStartPos.x, m_dragStartPos.y);
+            // var thirdDist = lineDist/3;
 
-            var _dragX = _x - m_dragStartPos.x;
-            var _dragY = _y - m_dragStartPos.y;
+            // console.log([Math.floor(lineDist) , Math.floor(dist)]);
+
+            // var _dragX = _x - m_dragStartPos.x;
+            // var _dragY = _y - m_dragStartPos.y;
+
+            // var _dragX = ((_x - activePoint.getPrevPointPos().x));
+            // var _dragY = ((_y - activePoint.getPrevPointPos().y));
+
             // console.log([_dragX, _dragY])
             // _dragX =  _dragX/Math.abs(_dragX) || 1; // To avoid NAN
             // _dragY =  _dragY/Math.abs(_dragY) || 1; // To avoid NAN
             //--------------------------------------
             // Update Points values to create a curve
-            activePoint.setCurve(_dragX, _dragY);  // right
+            activePoint.setCurve(_x, _y);  // right
 
             
             // console.log("DRAGING")
