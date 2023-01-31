@@ -45,11 +45,41 @@ class Point {
 
         return pos; 
     }
+
+    getCP1() // Getting control point 1
+    {
+        var cp1x = 0, cp1y = 1;
+        var pos = {
+            x : this.values[cp1x], 
+            y: this.values[cp1y]
+        };
+
+        return pos; 
+    }
+
+    getCP2() // Getting control point 2
+    {
+        var cp2x = 2, cp2y = 3;
+        var pos = {
+            x : this.values[cp2x], 
+            y: this.values[cp2y]
+        };
+
+        return pos; 
+    }
+
     setPos(_diffX, _diffY)
     {
         var l = this.values.length;
+
+        var cp2x = 2, cp2y = 3;
+
         this.values[l-2] = _diffX;
         this.values[l-1] = _diffY;
+        // Setting cp2 alongside with pos
+        this.values[cp2x] = _diffX;
+        this.values[cp2y] = _diffY;
+
     }
 
     saveInitialPos()
@@ -103,8 +133,8 @@ class Point {
 
         var BASE_MULTIPLIER = Math.PI;
 
-        var startX = m_points[0].getPos().x;
-        var startY = m_points[0].getPos().y;
+        var startX = this.getPrevPointPos().x;
+        var startY = this.getPrevPointPos().y;
 
         // console.log(_y);
         _y = screen.availHeight - _y; // In order to inverse curving direction
@@ -171,14 +201,13 @@ var m_svgBox = document.getElementById("svg");
 var SVG_MARGIN_X = m_svgBox.getBoundingClientRect().left;
 
 console.log(SVG_MARGIN_X)
-// // Listen for mousedown event on svg
-m_svgBox.addEventListener("mousedown", draw);
+
 
 // // Listen for mousemove event and drag on svg
 m_svgBox.addEventListener('mousemove', (e) => {
     if(e.buttons == 1) 
     {
-        e.preventDefault();
+        // e.preventDefault();
         // console.log("DRAGING...")
         m_mouseState = MOUSE_STATES.DRAGING;
 
@@ -190,6 +219,10 @@ m_svgBox.addEventListener('mousemove', (e) => {
     }
 });
 
+// // Listen for mousedown event on svg
+m_svgBox.addEventListener("mousedown", draw);
+
+
 // Left click state or Draging State
 m_svgBox.addEventListener("mouseup", pauseDrawing);
 
@@ -200,9 +233,9 @@ document.body.addEventListener("keypress", stopDrawing);
 // Trigger Draw on SVG
 function draw(e)
 {
-    m_mouseState = MOUSE_STATES.NONE;
-            
-    if(m_mouseState != MOUSE_STATES.DOUBLECLICKED || m_mouseState != MOUSE_STATES.DRAGING)
+    // m_mouseState = MOUSE_STATES.NONE;
+   
+    if(m_mouseState != MOUSE_STATES.DRAGING)
     {    
         m_mouseState = MOUSE_STATES.CLICKED;
 
@@ -235,6 +268,41 @@ function createStartingPoint()
 
     return result;
 }
+
+// Create a point being the next part of the current curve
+/* 
+    C1x = currentC2x Mirored by currentX 
+    C1y = currentC2y Mirored by currentY
+    
+    C2x = thisPointx      |
+    C2y = thisPointy      | update both on moved
+*/
+function createCurveEndingPoint()
+{
+    var lastPoint = m_points[(m_points.length-1)];
+    var lpos = lastPoint.getPos();
+    
+    // Get mirors
+    var cp1 = getSymetric(lastPoint.getCP2(), lastPoint.getPos());
+
+    var thisPointx = lpos.x + DOT_MARGIN;
+    var thisPointy = lpos.y + DOT_MARGIN;
+
+    var p = new Point("C", [cp1.x, cp1.y, thisPointx, thisPointy, thisPointx, thisPointy]);
+
+    var result = {lastPointPos : lpos, startingPoint : p};
+
+    return result;
+}
+
+function getSymetric(pa, pi)
+{
+    var _x = 2*pi.x - pa.x;
+    var _y = 2*pi.y - pa.y;
+
+    return {x : _x, y : _y};
+}
+
 // // Function to start drawing
 function startDrawing(e) {
     
@@ -260,7 +328,6 @@ function proceedLine(e) {
 
     if (m_drawingState != DRAWING_STATES.DRAWING || m_mouseState == MOUSE_STATES.DRAGING) return; // stop the function when drawmode left
     
-    console.log("LINE");
 
     m_triggeredNewPoint = true;
 
@@ -275,7 +342,11 @@ function proceedLine(e) {
     var diffY = _y - lastPointPos.y;
     var worthIt = (Math.abs(diffX) > MINIMAL_MOVE || Math.abs(diffY) > MINIMAL_MOVE );
     
-    // m_points.push(startingPoint);
+    if(!worthIt) return; // Helps to execute the proceedCurve instead of proceedLine (as we start draging from the same point than where the cursor is)
+
+    m_points.push(startingPoint);
+
+    console.log("LINE");
 
     // Update path
     updatePath();
@@ -316,7 +387,7 @@ function proceedCurve(e) {
     // Update Points values to create a curve
     activePoint.setCurve(_x, _y);   
     
-    // console.log("DRAGING")
+    console.log("DRAGING")
 
     updatePath();
 
@@ -326,9 +397,9 @@ function updateDrawing(e)
 {
 
     if(m_drawingState != DRAWING_STATES.DRAWING || m_triggeredNewPoint) return;
+    console.log("mo...")
     if(m_mouseState == MOUSE_STATES.DRAGING) return;
 
-    
     if(m_mouseState == MOUSE_STATES.CLICKED)
     {
         var _x = e.clientX - SVG_MARGIN_X;
@@ -358,8 +429,14 @@ function pauseDrawing(e)
 
     if(m_mouseState == MOUSE_STATES.DRAGING)
     {
-        // reset mouse state
-        m_mouseState = MOUSE_STATES.NONE;
+        // Create a new point (tail)
+        const {startingPoint} = createCurveEndingPoint();
+        m_points.push(startingPoint);
+        updatePath();
+        // reset mouse and drawing state
+        m_triggeredNewPoint = false;
+        m_drawingState = DRAWING_STATES.DRAWING;
+        m_mouseState = MOUSE_STATES.CLICKED;
         // Reset curve starter
         m_addedCurvePointStarter = false;
     }

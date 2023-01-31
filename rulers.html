@@ -17,11 +17,12 @@
     }
   </style>
 
-  <canvas id="canvas" width="800" height="600"></canvas>
+  <!-- <canvas id="canvas" width="800" height="600"></canvas> -->
+  <svg id="canvas" width="800" height="600"></svg>
 
   <script>
-    var canvas = document.getElementById("canvas");
-    var ctx = canvas.getContext("2d");
+    // var canvas = document.getElementById("canvas");
+    // var ctx = canvas.getContext("2d");
 
     // var rulerWidth = canvas.width;
     // var rulerHeight = canvas.height;
@@ -122,114 +123,168 @@
 //   ctx.stroke();
 // }
 
-var guideWidth = canvas.width;
-var guideHeight = canvas.height;
-var objects = [];
-var guides = [];
-var selectedObj = null;
-var offsetX = 0;
-var offsetY = 0;
+// var guideWidth = canvas.width;
+// var guideHeight = canvas.height;
+// var objects = [];
+// var guides = [];
+// var selectedObj = null;
+// var offsetX = 0;
+// var offsetY = 0;
 
-// Example objects
-objects.push({x: 100, y: 100, width: 50, height: 50});
-objects.push({x: 300, y: 200, width: 75, height: 75});
+// // Example objects
+// objects.push({x: 100, y: 100, width: 50, height: 50});
+// objects.push({x: 300, y: 200, width: 75, height: 75});
 
-// Example guides
-guides.push({x: 0, y: guideHeight / 2, type: "horizontal"});
-guides.push({x: guideWidth / 2, y: 0, type: "vertical"});
+// // Example guides
+// guides.push({x: 0, y: guideHeight / 2, type: "horizontal"});
+// guides.push({x: guideWidth / 2, y: 0, type: "vertical"});
 
-canvas.addEventListener("mousedown", handleMouseDown);
-canvas.addEventListener("mouseup", handleMouseUp);
-canvas.addEventListener("mousemove", handleMouseMove);
+// canvas.addEventListener("mousedown", handleMouseDown);
+// canvas.addEventListener("mouseup", handleMouseUp);
+// canvas.addEventListener("mousemove", handleMouseMove);
 
-drawGuides();
+// drawGuides();
 
-function handleMouseDown(e) {
-  var mouseX = e.clientX - canvas.offsetLeft;
-  var mouseY = e.clientY - canvas.offsetTop;
+// function handleMouseDown(e) {
+//   var mouseX = e.clientX - canvas.offsetLeft;
+//   var mouseY = e.clientY - canvas.offsetTop;
 
-  for (var i = 0; i < objects.length; i++) {
-    var obj = objects[i];
+//   for (var i = 0; i < objects.length; i++) {
+//     var obj = objects[i];
 
-    if (mouseX >= obj.x && mouseX <= obj.x + obj.width && mouseY >= obj.y && mouseY <= obj.y + obj.height) {
-      selectedObj = obj;
-      offsetX = mouseX - obj.x;
-      offsetY = mouseY - obj.y;
-      break;
+//     if (mouseX >= obj.x && mouseX <= obj.x + obj.width && mouseY >= obj.y && mouseY <= obj.y + obj.height) {
+//       selectedObj = obj;
+//       offsetX = mouseX - obj.x;
+//       offsetY = mouseY - obj.y;
+//       break;
+//     }
+//   }
+// }
+
+// function handleMouseUp(e) {
+//   selectedObj = null;
+// }
+
+// function handleMouseMove(e) {
+//   var mouseX = e.clientX - canvas.offsetLeft;
+//   var mouseY = e.clientY - canvas.offsetTop;
+
+//   if (selectedObj) {
+//     selectedObj.x = mouseX - offsetX;
+//     selectedObj.y = mouseY - offsetY;
+
+//     for (var i = 0; i < guides.length; i++) {
+//       var guide = guides[i];
+//       var guideX = guide.x;
+//       var guideY = guide.y;
+
+//       if (guide.type === "horizontal") {
+//         if (Math.abs(selectedObj.y - guideY) < 5) {
+//           selectedObj.y = guideY;
+//           displayGuideValue(guideX, guideY, "horizontal");
+//         }
+//       } else if (guide.type === "vertical") {
+//         if (Math.abs(selectedObj.x - guideX) < 5) {
+//           selectedObj.x = guideX;
+//           displayGuideValue(guideX, guideY, "vertical");
+//         }
+//       }
+//     }
+//   }
+
+//   drawGuides();
+// }
+
+
+// function displayGuideValue(guideX, guideY, type) {
+//   ctx.font = "12px Arial";
+//   ctx.fillStyle = "grey";
+
+//   if (type === "horizontal") {
+//     ctx.fillText(guideY, guideX + 10, guideY - 10);
+//   } else if (type === "vertical") {
+//     ctx.fillText(guideX, guideX + 10, guideY - 10);
+//   }
+// }
+
+
+// function drawGuides() {
+//   ctx.clearRect(0, 0, guideWidth, guideHeight);
+
+//   for (var i = 0; i < objects.length; i++) {
+//     var obj = objects[i];
+//     ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+//   }
+
+//   for (var i = 0; i < guides.length; i++) {
+//     var guide = guides[i];
+//     ctx.beginPath();
+
+//     if (guide.type === "horizontal") {
+//       ctx.moveTo(0, guide.y);
+//       ctx.lineTo(guideWidth, guide.y);
+//     } else if (guide.type === "vertical") {
+//       ctx.moveTo(guide.x, 0);
+//       ctx.lineTo(guide.x, guideHeight);
+//     }
+
+//     ctx.strokeStyle = "grey";
+//     ctx.stroke();
+//   }
+// }
+
+
+const canvas = document.getElementById('canvas');
+const elements = []; // array to store the position and size of elements on the canvas
+
+// Example element data
+elements.push({
+  x: 100,
+  y: 100,
+  width: 50,
+  height: 50
+});
+
+// Calculate the distances between the mouse and elements on the canvas
+canvas.addEventListener('mousemove', event => {
+  const mouseX = event.clientX;
+  const mouseY = event.clientY;
+
+  elements.forEach(element => {
+    // Calculate the distances between the mouse and the current element
+    const leftDistance = Math.abs(mouseX - element.x);
+    const rightDistance = Math.abs(mouseX - (element.x + element.width));
+    const topDistance = Math.abs(mouseY - element.y);
+    const bottomDistance = Math.abs(mouseY - (element.y + element.height));
+
+    // Draw horizontal smart guides if the mouse is close to the top or bottom of the element
+    if (topDistance < 20) {
+      drawGuide(element.x, element.y, element.x + element.width, element.y);
     }
-  }
-}
-
-function handleMouseUp(e) {
-  selectedObj = null;
-}
-
-function handleMouseMove(e) {
-  var mouseX = e.clientX - canvas.offsetLeft;
-  var mouseY = e.clientY - canvas.offsetTop;
-
-  if (selectedObj) {
-    selectedObj.x = mouseX - offsetX;
-    selectedObj.y = mouseY - offsetY;
-
-    for (var i = 0; i < guides.length; i++) {
-      var guide = guides[i];
-      var guideX = guide.x;
-      var guideY = guide.y;
-
-      if (guide.type === "horizontal") {
-        if (Math.abs(selectedObj.y - guideY) < 5) {
-          selectedObj.y = guideY;
-          displayGuideValue(guideX, guideY, "horizontal");
-        }
-      } else if (guide.type === "vertical") {
-        if (Math.abs(selectedObj.x - guideX) < 5) {
-          selectedObj.x = guideX;
-          displayGuideValue(guideX, guideY, "vertical");
-        }
-      }
-    }
-  }
-
-  drawGuides();
-}
-
-
-function displayGuideValue(guideX, guideY, type) {
-  ctx.font = "12px Arial";
-  ctx.fillStyle = "grey";
-
-  if (type === "horizontal") {
-    ctx.fillText(guideY, guideX + 10, guideY - 10);
-  } else if (type === "vertical") {
-    ctx.fillText(guideX, guideX + 10, guideY - 10);
-  }
-}
-
-
-function drawGuides() {
-  ctx.clearRect(0, 0, guideWidth, guideHeight);
-
-  for (var i = 0; i < objects.length; i++) {
-    var obj = objects[i];
-    ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
-  }
-
-  for (var i = 0; i < guides.length; i++) {
-    var guide = guides[i];
-    ctx.beginPath();
-
-    if (guide.type === "horizontal") {
-      ctx.moveTo(0, guide.y);
-      ctx.lineTo(guideWidth, guide.y);
-    } else if (guide.type === "vertical") {
-      ctx.moveTo(guide.x, 0);
-      ctx.lineTo(guide.x, guideHeight);
+    if (bottomDistance < 20) {
+      drawGuide(element.x, element.y + element.height, element.x + element.width, element.y + element.height);
     }
 
-    ctx.strokeStyle = "grey";
-    ctx.stroke();
-  }
+    // Draw vertical smart guides if the mouse is close to the left or right of the element
+    if (leftDistance < 20) {
+      drawGuide(element.x, element.y, element.x, element.y + element.height);
+    }
+    if (rightDistance < 20) {
+      drawGuide(element.x + element.width, element.y, element.x + element.width, element.y + element.height);
+    }
+  });
+});
+
+// Function to draw the smart guides
+function drawGuide(x1, y1, x2, y2) {
+  const guide = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  guide.setAttribute('x1', x1);
+  guide.setAttribute('y1', y1);
+  guide.setAttribute('x2', x2);
+  guide.setAttribute('y2', y2);
+  guide.setAttribute('stroke', '#000000');
+  guide.setAttribute('stroke-width', '1');
+  canvas.appendChild(guide);
 }
 
   </script>
