@@ -129,23 +129,13 @@
   Loonk.Utils.debugHead()
 
   // Presets
- 
-    const DRAWING_STATES = {
-        NONE : 1,
-        DRAWING : 2,
-        UPDATING : 3,
-        CURVING : 4
-    }
-    
-    const MOUSE_STATES = {
+    const DRAW_STATES = {
         
-        CLICKED : 1,
-        DOUBLECLICKED : 2,
-        DRAGING : 3,
-        MOVING : 4,
-        ENDED : 5,
-        NONE : 6
+        NONE : 0,
+        DRAWING : 1,
+        CURVING : 2
     }
+
     const MINIMAL_MOVE  = 5;
     const DOT_MARGIN  = 2;
 
@@ -156,10 +146,10 @@
      */
 
     class Point {
-        constructor(_type, _values, _path = null) {
+        constructor(_type, _values, _points = []) {
             this.m_type = _type;
             this.m_values = _values;
-            this.m_path = _path;
+            this.m_points = _points;
 
             // Used for keeping curving point fixed
             this.m_initX = null;
@@ -239,7 +229,7 @@
 
         getPrevPointPos()
         {
-            return this.m_path.m_points[this.m_path.m_points.indexOf(this) - 1].getPos();
+            return this.m_points[this.m_points.indexOf(this) - 1].getPos();
         }
 
         getCP1Coords()
@@ -325,12 +315,7 @@
             this.m_id = _path.getAttribute("id");
             this.m_element = _path;
         }
-
-        setPath(_data)
-        {
-            this.m_element.setAttribute("d", _data.trimEnd())
-        }
-
+ 
         setPoints(_points)
         {
             this.m_points = _points;
@@ -369,8 +354,8 @@
         this.m_startDrag = false;
         this.m_isDraging = false;
         this.m_clickProcessed = false;
-        this.m_mouseState =  MOUSE_STATES.NONE;
-        this.m_drawingState = DRAWING_STATES.NONE;
+
+        this.m_drawState = DRAW_STATES.NONE;
         this.m_addedCurvePointStarter = false;
         
       // Drawing presets 
@@ -410,8 +395,8 @@
         var path = new Path();
         this.m_activePath = path;
 
-        this.m_paths.push(this.m_activePath);
-        this.activatePath(this.m_activePath)
+        this.m_paths.push(path);
+        this.activatePath(path)
 
         // Add to svg
         this.m_svg.appendChild(path.m_element);
@@ -421,19 +406,38 @@
 
     activatePath(_path)
     {
-        for (let i = 0; i < this.m_paths.length; i++) {
-
-            this.m_paths[i].m_isCurrent = (this.m_paths[i] == _path);
-        }
-        this.m_activePath = _path;
+        this.m_activePath = _path.m_element;
         this.m_activePoints = _path.m_points;
     },
 
     _onMouseDown : function()
     {
+        let clicks = 0;
+        let clickTimer = 0;
+        const dblClickTimeSpan = 300;
+
         this.m_svg.addEventListener("mousedown", (e) =>{
-        
-            this.draw(e);
+            
+            clicks = e.detail;
+            if(clicks === 1) 
+            {
+                clickTimer = setTimeout(()=>{
+                    clicks = 0;
+                    // handle single click, now we are sure it is not a bouble click
+                    console.log('Single Click.')
+                    
+                    this.draw(e);
+
+                }, dblClickTimeSpan);
+            }
+            if(clicks === 2) {
+                    // it is the second click in double-click event
+                    console.log('Double Click.')
+                    this.endPath(e);
+                    clearTimeout(clickTimer);
+                    clicks = 0;
+            }
+
 
         });
 
@@ -448,6 +452,8 @@
                 // e.preventDefault();
                 // console.log("DRAGING...")
                 this.m_mouseState = MOUSE_STATES.DRAGING;
+
+                this.m_drawState = DRAW_STATES.CURVING;
         
                 this.proceedCurve(e);
             }
@@ -475,7 +481,6 @@
         this._onMouseMove();
         this._onMouseUp();
 
-        document.body.addEventListener("keypress", this.stopDrawing);
 
     },
 
@@ -483,13 +488,10 @@
     // Trigger Draw on SVG
     draw : function(e)
     {
-        // m_mouseState = MOUSE_STATES.NONE;
     
-        if(this.m_mouseState != MOUSE_STATES.DRAGING)
+        if(this.m_drawState != DRAW_STATES.CURVING)
         {    
-            this.m_mouseState = MOUSE_STATES.CLICKED;
-
-            this.m_clickProcessed = true;
+            this.m_drawState = DRAW_STATES.DRAWING;
 
             if(this.m_isFirstPoint)
             {
@@ -499,6 +501,7 @@
             }
             else
             {
+                console.log("liner")
                 this.proceedLine(e);
             }
 
@@ -512,7 +515,7 @@
         var lastPoint = this.m_activePoints[(this.m_activePoints.length-1)];
         var lpos = lastPoint.getPos();
         
-        var p = new Point("C", [lpos.x, lpos.y, lpos.x, lpos.y, (lpos.x + DOT_MARGIN), (lpos.y + DOT_MARGIN)], this.m_activePath)
+        var p = new Point("C", [lpos.x, lpos.y, lpos.x, lpos.y, (lpos.x + DOT_MARGIN), (lpos.y + DOT_MARGIN)], this.m_activePoints)
 
         var result = {lastPointPos : lpos, startingPoint : p};
 
@@ -538,7 +541,7 @@
         var thisPointx = lpos.x + DOT_MARGIN;
         var thisPointy = lpos.y + DOT_MARGIN;
 
-        var p = new Point("C", [cp1.x, cp1.y, thisPointx, thisPointy, thisPointx, thisPointy], this.m_activePath);
+        var p = new Point("C", [cp1.x, cp1.y, thisPointx, thisPointy, thisPointx, thisPointy], this.m_activePoints);
 
         var result = {lastPointPos : lpos, startingPoint : p};
 
@@ -556,17 +559,13 @@
     // // Function to start drawing
     startDrawing : function(e) {
         
-        this.m_drawingState = DRAWING_STATES.DRAWING;
-
         var _x = e.clientX - this.m_offsetX;
         var _y = e.clientY - this.m_offsetY;
         // Starting Point
         var p1 = new Point("M", [_x, _y])
-        this.m_activePath.m_points.push(p1);
-        this.m_activePoints = this.m_activePath.m_points;
+        this.m_activePoints.push(p1);
         const {startingPoint} = this.createStartingPoint();
-        this.m_activePath.m_points.push(startingPoint);
-        this.m_activePoints = this.m_activePath.m_points;
+        this.m_activePoints.push(startingPoint);
 
         // Update path : Init
         this.updatePath();
@@ -578,55 +577,32 @@
 
     proceedLine : function(e) {
 
-        if (this.m_drawingState != DRAWING_STATES.DRAWING || this.m_mouseState == MOUSE_STATES.DRAGING) return; // stop the function when drawmode left
-        
-
         this.m_triggeredNewPoint = true;
-
         // Create next point : Closer to the current one
-        
-        const {lastPointPos, startingPoint} = this.createStartingPoint();
-
-        var _x = e.clientX - this.m_offsetX + DOT_MARGIN;
-        var _y = e.clientY - this.m_offsetY + DOT_MARGIN;
-        
-        var diffX = _x - lastPointPos.x ;
-        var diffY = _y - lastPointPos.y;
-        var worthIt = (Math.abs(diffX) > MINIMAL_MOVE || Math.abs(diffY) > MINIMAL_MOVE );
-        
-        if(!worthIt) return; // Helps to execute the proceedCurve instead of proceedLine (as we start draging from the same point than where the cursor is)
+        const {startingPoint} = this.createStartingPoint();
 
         this.m_activePoints.push(startingPoint);
-
-        console.log("LINE");
 
         // Update path
         this.updatePath();
 
         this.m_triggeredNewPoint = false;
-        
 
     },
 
 
     proceedCurve : function(e) {
         
-        if (this.m_drawingState != DRAWING_STATES.DRAWING && this.m_mouseState != MOUSE_STATES.DRAGING) return; // stop the function when drawmode left
+        if (this.m_drawState != DRAW_STATES.CURVING) return; // stop the function when drawmode left
 
         var _x = e.clientX - this.m_offsetX;
         var _y = e.clientY - this.m_offsetY;
-        
-        var result = this.addNewPoint(_x, _y);
-        var worthIt = result.worthIt;
-        var newPoint = result.point;
 
         // Get concerned Points
         var activePoint = this.m_activePoints[this.m_activePoints.length - 1];
 
         if(!this.m_addedCurvePointStarter) // In order to add only a single one point
         {       
-            
-            //-------------------------
             //Save active point initial pos
             activePoint.saveInitialPos();
 
@@ -636,7 +612,7 @@
         // Update Points values to create a curve
         activePoint.setCurve(_x, _y);   
         
-        console.log("DRAGING")
+        console.log("CURVING...")
 
         this.updatePath();
 
@@ -644,30 +620,24 @@
 
     updateDrawing : function(e)
     {
+ 
+        if(this.m_drawState != DRAW_STATES.DRAWING) return;
 
-        if(this.m_drawingState != DRAWING_STATES.DRAWING || this.m_triggeredNewPoint) return;
-        if(this.m_mouseState == MOUSE_STATES.DRAGING) return;
-
-        if(this.m_mouseState == MOUSE_STATES.CLICKED)
-        {
-            var _x = e.clientX - this.m_offsetX;
-            var _y = e.clientY - this.m_offsetY;
-            
-            var result = this.addNewPoint(_x, _y);
-            var worthIt = result.worthIt;
-            var newPoint = result.point;
-
-            if(!worthIt) return;
-            
-            console.log("UPDATING")
+        var _x = e.clientX - this.m_offsetX;
+        var _y = e.clientY - this.m_offsetY;
         
-            // Update points
-            this.m_activePoints[(this.m_activePoints.length-1)] = newPoint;
+        var result = this.addNewPoint(_x, _y);
+        var worthIt = result.worthIt;
+        var newPoint = result.point;
 
-            // Update path
-            this.updatePath();
-
-        }
+        if(!worthIt) return;
+        
+        console.log("UPDATING")
+    
+        // Update points
+        this.m_activePoints[(this.m_activePoints.length-1)] = newPoint;
+        // Update path
+        this.updatePath();
 
     },
 
@@ -675,7 +645,7 @@
     pauseDrawing : function(e)
     {
 
-        if(this.m_mouseState == MOUSE_STATES.DRAGING)
+        if(this.m_drawState == DRAW_STATES.CURVING)
         {
             // Create a new point (tail)
             const {startingPoint} = this.createCurveEndingPoint();
@@ -683,8 +653,8 @@
             this.updatePath();
             // reset mouse and drawing state
             this.m_triggeredNewPoint = false;
-            this.m_drawingState = DRAWING_STATES.DRAWING;
-            this.m_mouseState = MOUSE_STATES.CLICKED;
+         
+            this.m_drawState = DRAW_STATES.DRAWING;
             // Reset curve starter
             this.m_addedCurvePointStarter = false;
         }
@@ -722,20 +692,26 @@
     stopDrawing : function(e) {
         if (e.key === "Enter") {
             // Cancel the default action, if needed
-            // e.preventDefault();
-            if(this.m_mouseState != MOUSE_STATES.DRAGING) // Remove last point only when not in Draging
-            {
-                // Remove current startin point from points and update path ()
-                this.m_activePath.m_points.pop();
-            }
-
-            this.m_mouseState = MOUSE_STATES.NONE;
-            this.m_isFirstPoint = true;
-
-            this.updatePath();
+            e.preventDefault();
+            this.endPath(e);
 
             console.log('QUIT')
         }
+    },
+
+    endPath : function(e)
+    {
+        if(this.m_drawState != DRAW_STATES.CURVING) // Remove last point only when not in Curving
+        {
+            // Remove current startin point from points and update path ()
+            this.m_activePoints.pop();
+        }
+
+        this.m_triggeredNewPoint = false;
+        this.m_drawState = DRAW_STATES.DRAWING;
+        this.m_isFirstPoint = true;
+
+        this.updatePath();
     },
 
     updatePath : function()
@@ -744,14 +720,14 @@
 
         for (let i = 0; i < this.m_activePoints.length; i++) {
 
-            console.log(i)
             const p = this.m_activePoints[i];
             var pToSvg = p.toString();
 
             data += pToSvg;                
         }
 
-        this.m_activePath.setPath(data);
+        this.m_activePath.setAttribute("d", data.trimEnd())
+
     },
 
     getDistance : function(xA, yA, xB, yB) { 
