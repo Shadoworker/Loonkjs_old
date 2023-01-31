@@ -133,7 +133,8 @@
         
         NONE : 0,
         DRAWING : 1,
-        CURVING : 2
+        CURVING : 2,
+        ENDED : 3
     }
 
     const MINIMAL_MOVE  = 5;
@@ -449,10 +450,8 @@
         
             if(e.buttons == 1) 
             {
+                if(this.m_drawState == DRAW_STATES.ENDED) return;
                 // e.preventDefault();
-                // console.log("DRAGING...")
-                this.m_mouseState = MOUSE_STATES.DRAGING;
-
                 this.m_drawState = DRAW_STATES.CURVING;
         
                 this.proceedCurve(e);
@@ -468,7 +467,6 @@
     _onMouseUp : function()
     {
         this.m_svg.addEventListener("mouseup", (e) =>{
-
             this.pauseDrawing(e);
         })
 
@@ -481,6 +479,10 @@
         this._onMouseMove();
         this._onMouseUp();
 
+        document.body.addEventListener('keypress', (e) =>{
+
+            this.stopDrawing(e)
+        })
 
     },
 
@@ -693,25 +695,32 @@
         if (e.key === "Enter") {
             // Cancel the default action, if needed
             e.preventDefault();
-            this.endPath(e);
+            this.m_activePoints.pop();
 
+            this.m_triggeredNewPoint = false;
+            this.m_drawState = DRAW_STATES.ENDED;
+            this.m_isFirstPoint = true;
+
+            this.updatePath();
             console.log('QUIT')
         }
     },
 
     endPath : function(e)
     {
-        if(this.m_drawState != DRAW_STATES.CURVING) // Remove last point only when not in Curving
+        if(this.m_drawState == DRAW_STATES.CURVING) // Remove last point only when not in Curving
         {
             // Remove current startin point from points and update path ()
             this.m_activePoints.pop();
         }
 
         this.m_triggeredNewPoint = false;
-        this.m_drawState = DRAW_STATES.DRAWING;
+        this.m_drawState = DRAW_STATES.ENDED;
         this.m_isFirstPoint = true;
 
         this.updatePath();
+        console.log('END')
+
     },
 
     updatePath : function()
